@@ -12,6 +12,18 @@
     .container {
       max-width: 800px;
     }
+    .pdf-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .pdf-subtitle {
+      font-size: 16px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .pdf-summary {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -69,6 +81,8 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
 <script>
   document.querySelectorAll('.calculateButton').forEach((button, weekIndex) => {
     button.addEventListener('click', () => {
@@ -156,28 +170,39 @@
     const doc = new jsPDF();
     let y = 10;
 
+    doc.setFontSize(18);
     doc.text('Monthly Hours Report', 10, y);
     y += 10;
+    doc.setFontSize(12);
 
     document.querySelectorAll('.week-section').forEach((weekSection, index) => {
+      doc.setFontSize(16);
       doc.text(`Week ${index + 1}`, 10, y);
       y += 10;
 
       const rows = weekSection.querySelectorAll('tbody tr');
-      rows.forEach(row => {
-        const day = row.querySelector('td').textContent;
-        const hours = row.querySelector('.daily-hours').textContent;
-        doc.text(`${day}: ${hours} hours`, 10, y);
-        y += 10;
+      doc.setFontSize(12);
+      doc.autoTable({
+        startY: y,
+        head: [['Day', 'Clock In', 'Clock Out', 'Total Hours']],
+        body: Array.from(rows).map(row => [
+          row.querySelector('td').textContent,
+          row.querySelector('.clock-in').value,
+          row.querySelector('.clock-out').value,
+          row.querySelector('.daily-hours').textContent
+        ]),
+        theme: 'grid'
       });
 
+      y = doc.previousAutoTable.finalY + 10;
       const weeklyHours = weekSection.querySelector('.weeklyHours').textContent;
       doc.text(`Total Weekly Hours: ${weeklyHours}`, 10, y);
       y += 10;
     });
 
-    const totalMonthlyHours = document.getElementById('totalMonthlyHours').textContent;
-    doc.text(`Total Monthly Hours: ${totalMonthlyHours}`, 10, y);
+    y += 10;
+    doc.setFontSize(16);
+    doc.text(`Total Monthly Hours: ${document.getElementById('totalMonthlyHours').textContent}`, 10, y);
 
     doc.save('MonthlyHoursReport.pdf');
   });

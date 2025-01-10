@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monthly Hours Tracker</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      margin: 20px;
+    }
+    .container {
+      max-width: 800px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1 class="text-center">Monthly Hours Tracker</h1>
+
+  <!-- Generate weeks dynamically -->
+  <div id="weeksContainer">
+    <script>
+      for (let week = 1; week <= 4; week++) {
+        document.write(`
+            <div class="week-section mb-4">
+              <h3>Week ${week}</h3>
+              <form class="timeForm">
+                <table class="table table-bordered">
+                  <thead>
+                    <tr>
+                      <th>Day</th>
+                      <th>Clock In</th>
+                      <th>Clock Out</th>
+                      <th>Total Hours</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => `
+                      <tr>
+                        <td>${day}</td>
+                        <td><input type="time" class="form-control clock-in" required></td>
+                        <td><input type="time" class="form-control clock-out" required></td>
+                        <td class="daily-hours">0</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </form>
+              <div class="text-right">
+                <button type="button" class="btn btn-primary calculateButton">Calculate Week ${week}</button>
+              </div>
+              <div class="mt-2">
+                <h4>Weekly Hours: <span class="weeklyHours">0</span></h4>
+              </div>
+            </div>
+          `);
+      }
+    </script>
+  </div>
+
+  <div class="mt-4">
+    <h4>Total Monthly Hours: <span id="totalMonthlyHours">0</span></h4>
+    <button type="button" class="btn btn-success" id="generatePdfButton">Generate PDF</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+<script>
+  document.querySelectorAll('.calculateButton').forEach((button, weekIndex) => {
+    button.addEventListener('click', () => {
+      const rows = button.closest('.week-section').querySelectorAll('tbody tr');
+      let totalWeeklyHours = 0;
+
+      rows.forEach(row => {
+        const clockIn = row.querySelector('.clock-in').value;
+        const clockOut = row.querySelector('.clock-out').value;
+
+        if (clockIn && clockOut) {
+          const [inHours, inMinutes] = clockIn.split(':').map(Number);
+          const [outHours, outMinutes] = clockOut.split(':').map(Number);
+          const totalHours = (outHours + outMinutes / 60) - (inHours + inMinutes / 60);
+          const roundedHours = Math.max(0, totalHours.toFixed(2));
+
+          row.querySelector('.daily-hours').textContent = roundedHours;
+          totalWeeklyHours += parseFloat(roundedHours);
+        }
+      });
+
+      button.closest('.week-section').querySelector('.weeklyHours').textContent = totalWeeklyHours.toFixed(2);
+      calculateMonthlyHours();
+    });
+  });
+
+  function calculateMonthlyHours() {
+    let totalMonthlyHours = 0;
+    document.querySelectorAll('.weeklyHours').forEach(weekHours => {
+      totalMonthlyHours += parseFloat(weekHours.textContent);
+    });
+    document.getElementById('totalMonthlyHours').textContent = totalMonthlyHours.toFixed(2);
+  }
+
+  document.getElementById('generatePdfButton').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    let y = 10;
+
+    doc.text('Monthly Hours Report', 10, y);
+    y += 10;
+
+    document.querySelectorAll('.week-section').forEach((weekSection, index) => {
+      doc.text(`Week ${index + 1}`, 10, y);
+      y += 10;
+
+      const rows = weekSection.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const day = row.querySelector('td').textContent;
+        const hours = row.querySelector('.daily-hours').textContent;
+        doc.text(`${day}: ${hours} hours`, 10, y);
+        y += 10;
+      });
+
+      const weeklyHours = weekSection.querySelector('.weeklyHours').textContent;
+      doc.text(`Total Weekly Hours: ${weeklyHours}`, 10, y);
+      y += 10;
+    });
+
+    const totalMonthlyHours = document.getElementById('totalMonthlyHours').textContent;
+    doc.text(`Total Monthly Hours: ${totalMonthlyHours}`, 10, y);
+
+    doc.save('MonthlyHoursReport.pdf');
+  });
+</script>
+</body>
+</html>

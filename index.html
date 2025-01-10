@@ -33,6 +33,7 @@
                       <th>Clock In</th>
                       <th>Clock Out</th>
                       <th>Total Hours</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -42,6 +43,7 @@
                         <td><input type="time" class="form-control clock-in" required></td>
                         <td><input type="time" class="form-control clock-out" required></td>
                         <td class="daily-hours">0</td>
+                        <td><button type="button" class="btn btn-warning clearButton">Clear</button></td>
                       </tr>
                     `).join('')}
                   </tbody>
@@ -62,6 +64,7 @@
   <div class="mt-4">
     <h4>Total Monthly Hours: <span id="totalMonthlyHours">0</span></h4>
     <button type="button" class="btn btn-success" id="generatePdfButton">Generate PDF</button>
+    <button type="button" class="btn btn-danger" id="clearAllButton">Clear All Data</button>
   </div>
 </div>
 
@@ -89,7 +92,26 @@
 
       button.closest('.week-section').querySelector('.weeklyHours').textContent = totalWeeklyHours.toFixed(2);
       calculateMonthlyHours();
+      saveData();
     });
+  });
+
+  document.querySelectorAll('.clearButton').forEach(clearButton => {
+    clearButton.addEventListener('click', () => {
+      const row = clearButton.closest('tr');
+      row.querySelector('.clock-in').value = '';
+      row.querySelector('.clock-out').value = '';
+      row.querySelector('.daily-hours').textContent = '0';
+      saveData();
+    });
+  });
+
+  document.getElementById('clearAllButton').addEventListener('click', () => {
+    document.querySelectorAll('input[type="time"]').forEach(input => input.value = '');
+    document.querySelectorAll('.daily-hours').forEach(cell => cell.textContent = '0');
+    document.querySelectorAll('.weeklyHours').forEach(cell => cell.textContent = '0');
+    document.getElementById('totalMonthlyHours').textContent = '0';
+    saveData();
   });
 
   function calculateMonthlyHours() {
@@ -98,6 +120,35 @@
       totalMonthlyHours += parseFloat(weekHours.textContent);
     });
     document.getElementById('totalMonthlyHours').textContent = totalMonthlyHours.toFixed(2);
+  }
+
+  function saveData() {
+    const data = [];
+    document.querySelectorAll('.week-section').forEach(weekSection => {
+      const weekData = [];
+      weekSection.querySelectorAll('tbody tr').forEach(row => {
+        const clockIn = row.querySelector('.clock-in').value;
+        const clockOut = row.querySelector('.clock-out').value;
+        const dailyHours = row.querySelector('.daily-hours').textContent;
+        weekData.push({ clockIn, clockOut, dailyHours });
+      });
+      data.push(weekData);
+    });
+    localStorage.setItem('hoursTrackerData', JSON.stringify(data));
+  }
+
+  function loadData() {
+    const data = JSON.parse(localStorage.getItem('hoursTrackerData') || '[]');
+    document.querySelectorAll('.week-section').forEach((weekSection, weekIndex) => {
+      const weekData = data[weekIndex] || [];
+      weekSection.querySelectorAll('tbody tr').forEach((row, rowIndex) => {
+        const rowData = weekData[rowIndex] || {};
+        row.querySelector('.clock-in').value = rowData.clockIn || '';
+        row.querySelector('.clock-out').value = rowData.clockOut || '';
+        row.querySelector('.daily-hours').textContent = rowData.dailyHours || '0';
+      });
+    });
+    calculateMonthlyHours();
   }
 
   document.getElementById('generatePdfButton').addEventListener('click', () => {
@@ -130,6 +181,9 @@
 
     doc.save('MonthlyHoursReport.pdf');
   });
+
+  // Load data on page load
+  window.onload = loadData;
 </script>
 </body>
 </html>

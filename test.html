@@ -40,12 +40,22 @@
     async function getCameras() {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const cameras = devices.filter(device => device.kind === 'videoinput');
+
+      // Clear existing options
+      cameraSelect.innerHTML = '';
+
+      // Add options for each camera
       cameras.forEach((camera, index) => {
         const option = document.createElement('option');
         option.value = camera.deviceId;
         option.text = camera.label || `Camera ${index + 1}`;
         cameraSelect.appendChild(option);
       });
+
+      // If no cameras are found, prompt the user
+      if (cameras.length === 0) {
+        alert('No cameras found.');
+      }
     }
 
     // Function to start the camera
@@ -53,11 +63,22 @@
       if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
       }
+
       const constraints = {
-        video: { deviceId: deviceId ? { exact: deviceId } : undefined }
+        video: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       };
-      mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = mediaStream;
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = mediaStream;
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        alert('Failed to access camera. Please ensure permissions are granted.');
+      }
     }
 
     // Function to scan QR code
@@ -85,6 +106,8 @@
 
     // Initialize the app
     async function init() {
+      // Request camera access first
+      await navigator.mediaDevices.getUserMedia({ video: true });
       await getCameras();
       await startCamera();
       scanQRCode();
